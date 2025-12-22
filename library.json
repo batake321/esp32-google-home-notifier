@@ -1,19 +1,14 @@
 {
-  "name": "esp8266-google-home-notifier",
-  "version": "1.0.8",
-  "keywords": "esp8266, Google Home, TTS, Google, TextToSpeech, Text2Speech",
-  "description": "Send notifications to Google Home from esp8266. This library requires esp8266 2.5.0 or higher and esp8266-google-tts which depends on Google Translate Service.",
+  "name": "esp32-google-home-notifier",
+  "version": "0.0.1",
+  "keywords": "ESP32, Google Home, TTS, Google, TextToSpeech, Text2Speech, Cast",
+  "description": "Send notifications to Google Home from ESP32. Compatible with ESP-IDF 5.x and Arduino Core 3.x. Uses esp_tls and esp_mdns.",
   "repository":
   {
     "type": "git",
-    "url": "https://github.com/horihiro/esp8266-google-home-notifier"
+    "url": "https://github.com/batake321/esp32-google-home-notifier"
   },
-  "frameworks": "arduino",
-  "platforms": "espressif8266, espressif32",
-  "dependencies":
-  [
-      {
-          "name":"esp8266-google-tts"
-      }
-  ]
+  "frameworks": "arduino, espidf",
+  "platforms": "espressif32",
+  "dependencies": []
 }
