@@ -1,4 +1,4 @@
-esp8266-google-home-notifier	KEYWORD1
+esp32-google-home-notifier	KEYWORD1
 GoogleHomeNotifier	KEYWORD1
 device	KEYWORD2
 ip	KEYWORD2

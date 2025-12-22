@@ -13,6 +13,8 @@ This is a fork of [esp8266-google-home-notifier](https://github.com/horihiro/esp
 - Replaced `MDNS` (ESP8266mDNS) with ESP-IDF `esp_mdns`
 - Replaced dependency on Arduino String class with standard C++ `std::string`
 - Added support for direct IP address connection to Google Home
+- **No `Arduino.h` dependency**: Works in pure ESP-IDF environments as a component.
+- **High compatibility**: Optimized for PlatformIO and ESP-IDF workflows.
 
 ## Requirement
 - **ESP32** (ESP-IDF 5.x or Arduino Core 3.x)
