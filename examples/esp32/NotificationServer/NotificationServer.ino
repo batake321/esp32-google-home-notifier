@@ -1,12 +1,16 @@
-#include <ESP8266WiFi.h>
-#include <ESP8266WebServer.h>
-#include <esp8266-google-home-notifier.h>
+#include <WebServer.h>
+#include <WiFi.h>
+#include <esp32-google-home-notifier.h>
 
-const char* ssid     = "<REPLASE_YOUR_WIFI_SSID>";
-const char* password = "<REPLASE_YOUR_WIFI_PASSWORD>";
 
-ESP8266WebServer server(80);
+const char *ssid = "<REPLACE_YOUR_WIFI_SSID>";
+const char *password = "<REPLACE_YOUR_WIFI_PASSWORD>";
+
+WebServer server(80);
 GoogleHomeNotifier ghn;
+
+void handleSpeechPath();
+void handleRootPath();
 
 void setup() {
   // put your setup code here, to run once:
@@ -23,8 +27,8 @@ void setup() {
   Serial.println("");
   Serial.println("connected.");
   Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());  //Print the local IP
-  
+  Serial.println(WiFi.localIP()); // Print the local IP
+
   const char displayName[] = "Family Room";
 
   Serial.println("connecting to Google Home...");
@@ -33,32 +37,39 @@ void setup() {
     return;
   }
   Serial.print("found Google Home(");
-  Serial.print(ghn.getIPAddress());
+  Serial.print(ghn.getIPAddress().toString().c_str());
   Serial.print(":");
   Serial.print(ghn.getPort());
   Serial.println(")");
-  
+
   server.on("/speech", handleSpeechPath);
   server.on("/", handleRootPath);
   server.begin();
- }
+}
 
 void handleSpeechPath() {
   String phrase = server.arg("phrase");
   if (phrase == "") {
-    server.send(401, "text / plain", "query 'phrase' is not found");
+    server.send(401, "text/plain", "query 'phrase' is not found");
     return;
   }
   if (ghn.notify(phrase.c_str()) != true) {
     Serial.println(ghn.getLastError());
-    server.send(500, "text / plain", ghn.getLastError());
+    server.send(500, "text/plain", ghn.getLastError());
     return;
   }
-  server.send(200, "text / plain", "OK");
+  server.send(200, "text/plain", "OK");
 }
 
 void handleRootPath() {
-  server.send(200, "text/html", "<html><head></head><body><input type=\"text\"><button>speech</button><script>var d = document;d.querySelector('button').addEventListener('click',function(){xhr = new XMLHttpRequest();xhr.open('GET','/speech?phrase='+encodeURIComponent(d.querySelector('input').value));xhr.send();});</script></body></html>");
+  server.send(200, "text/html",
+              "<html><head></head><body><input "
+              "type=\"text\"><button>speech</button><script>var d = "
+              "document;d.querySelector('button').addEventListener('click',"
+              "function(){xhr = new "
+              "XMLHttpRequest();xhr.open('GET','/"
+              "speech?phrase='+encodeURIComponent(d.querySelector('input')."
+              "value));xhr.send();});</script></body></html>");
 }
 
 void loop() {

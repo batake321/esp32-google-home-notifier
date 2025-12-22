@@ -1,8 +1,8 @@
 #include <WiFi.h>
-#include <esp8266-google-home-notifier.h>
+#include <esp32-google-home-notifier.h>
 
-const char* ssid     = "<REPLASE_YOUR_WIFI_SSID>";
-const char* password = "<REPLASE_YOUR_WIFI_PASSWORD>";
+const char *ssid = "<REPLACE_YOUR_WIFI_SSID>";
+const char *password = "<REPLACE_YOUR_WIFI_PASSWORD>";
 
 GoogleHomeNotifier ghn;
 
@@ -21,8 +21,8 @@ void setup() {
   Serial.println("");
   Serial.println("connected.");
   Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());  //Print the local IP
-  
+  Serial.println(WiFi.localIP()); // Print the local IP
+
   const char displayName[] = "Family Room";
 
   Serial.println("connecting to Google Home...");
@@ -31,11 +31,11 @@ void setup() {
     return;
   }
   Serial.print("found Google Home(");
-  Serial.print(ghn.getIPAddress());
+  Serial.print(ghn.getIPAddress().toString().c_str());
   Serial.print(":");
   Serial.print(ghn.getPort());
   Serial.println(")");
-  
+
   if (ghn.notify("Hello, World!") != true) {
     Serial.println(ghn.getLastError());
     return;
@@ -45,5 +45,4 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-
 }
