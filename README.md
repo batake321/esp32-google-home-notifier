@@ -20,6 +20,11 @@ This is a fork of [esp8266-google-home-notifier](https://github.com/horihiro/esp
 - **ESP32** (ESP-IDF 5.x or Arduino Core 3.x)
 - This library depends on Google Translate Service for TTS.
 
+## Installation
+1. Download the ZIP file from [Code] -> [Download ZIP] on GitHub.
+2. In Arduino IDE, go to [Sketch] -> [Include Library] -> [Add .ZIP Library...].
+3. Select the downloaded ZIP file.
+
 ## Usage
 
 ### Simple for ESP32
