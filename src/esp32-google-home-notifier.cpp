@@ -148,6 +148,8 @@ bool GoogleHomeNotifier::cast(const char *phrase, const char *mp3Url) {
   esp_tls_cfg_t cfg = {};
   cfg.common_name = NULL;
   cfg.skip_common_name = true; // Trust IP connection
+  cfg.skip_server_cert_verify =
+      true; // Fix for ESP_ERR_MBEDTLS_SSL_SETUP_FAILED
   cfg.non_block = false;
 
   char host_str[32];
