@@ -148,8 +148,7 @@ bool GoogleHomeNotifier::cast(const char *phrase, const char *mp3Url) {
   esp_tls_cfg_t cfg = {};
   cfg.common_name = NULL;
   cfg.skip_common_name = true; // Trust IP connection
-  cfg.skip_server_cert_verify =
-      true; // Fix for ESP_ERR_MBEDTLS_SSL_SETUP_FAILED
+  cfg.timeout_ms = 30000;      // Increase timeout to 30s
   cfg.non_block = false;
 
   char host_str[32];
@@ -157,8 +156,10 @@ bool GoogleHomeNotifier::cast(const char *phrase, const char *mp3Url) {
            m_ipaddress[1], m_ipaddress[2], m_ipaddress[3]);
 
   ESP_LOGI(TAG, "Connecting to %s:%d", host_str, m_port);
+
   int ret =
       esp_tls_conn_new_sync(host_str, strlen(host_str), m_port, &cfg, m_tls);
+
   if (ret != 1) { // 1 means success
     setLastError("TLS Connection failed");
     disconnect();
@@ -214,11 +215,11 @@ bool GoogleHomeNotifier::sendMessage(const char *sourceId,
   message.payload_utf8.funcs.encode = &(GoogleHomeNotifier::encode_string);
   message.payload_utf8.arg = (void *)data;
 
-  uint8_t
-      scratch_buf[2048]; // Use stack buffer instead of dynamic alloc/realloc
+  // Use Heap buffer instead of stack (2048 bytes)
+  std::vector<uint8_t> scratch_buf(2048);
 
   pb_ostream_t stream =
-      pb_ostream_from_buffer(scratch_buf, sizeof(scratch_buf));
+      pb_ostream_from_buffer(scratch_buf.data(), scratch_buf.size());
   if (!pb_encode(&stream, extensions_api_cast_channel_CastMessage_fields,
                  &message)) {
     setLastError("Protobuf encode failed");
@@ -235,7 +236,7 @@ bool GoogleHomeNotifier::sendMessage(const char *sourceId,
   if (esp_tls_conn_write(m_tls, header, 4) < 0)
     return false;
   // Write Body
-  if (esp_tls_conn_write(m_tls, scratch_buf, bufferSize) < 0)
+  if (esp_tls_conn_write(m_tls, scratch_buf.data(), bufferSize) < 0)
     return false;
 
   // m_client->flush() equivalent? TCP stack handles it.
@@ -271,9 +272,6 @@ bool GoogleHomeNotifier::connect() {
   delay(10);
 
   // Wait for response logic (Transport ID extraction)
-  // Original code waited for read.
-  // We implement a read loop with timeout.
-
   int timeout = millis() + 5000;
   while ((int)millis() < timeout) {
     // Read Header
@@ -285,17 +283,11 @@ bool GoogleHomeNotifier::connect() {
       delay(10);
       continue;
     }
-    if (read_len <= 0) { // Error or closed
-      // If nothing available yet, esp_tls might block or return specific error?
-      // If configured non-blocking, it returns negative.
-      // We configured blocking for simplicity in `new_sync`.
-      // But Wait, `esp_tls_conn_read` blocks if sockets are blocking.
-      // So loop handles logic.
-      // If connection closes?
+    if (read_len <= 0) {
       if (read_len == 0 && (int)millis() < timeout) {
         delay(10);
         continue;
-      } // Maybe partial?
+      }
       break;
     }
 
@@ -305,17 +297,16 @@ bool GoogleHomeNotifier::connect() {
 
     if (body_len > 2048) {
       ESP_LOGW(TAG, "Message too large: %ld", (long)body_len);
-      // Skip it? Can't skip comfortably.
       return false;
     }
 
-    // Read Body
-    uint8_t body[2048];
+    // Read Body (Use Heap to save stack)
+    std::vector<uint8_t> body(body_len);
     size_t total_read = 0;
     int sub_timeout = millis() + 2000;
     while (total_read < body_len && (int)millis() < sub_timeout) {
-      ssize_t r =
-          esp_tls_conn_read(m_tls, body + total_read, body_len - total_read);
+      ssize_t r = esp_tls_conn_read(m_tls, body.data() + total_read,
+                                    body_len - total_read);
       if (r > 0)
         total_read += r;
       else
@@ -327,21 +318,18 @@ bool GoogleHomeNotifier::connect() {
     // Decode
     extensions_api_cast_channel_CastMessage imsg =
         extensions_api_cast_channel_CastMessage_init_default;
-    pb_istream_t istream = pb_istream_from_buffer(body, body_len);
+    pb_istream_t istream = pb_istream_from_buffer(body.data(), body_len);
 
     imsg.source_id.funcs.decode = &(GoogleHomeNotifier::decode_string);
-    imsg.source_id.arg = (void *)"sid";
+    imsg.source_id.arg = NULL; // Skip capture
     imsg.destination_id.funcs.decode = &(GoogleHomeNotifier::decode_string);
-    imsg.destination_id.arg = (void *)"did";
+    imsg.destination_id.arg = NULL; // Skip capture
     imsg.namespace_str.funcs.decode = &(GoogleHomeNotifier::decode_string);
-    imsg.namespace_str.arg = (void *)"ns";
+    imsg.namespace_str.arg = NULL; // Skip capture
     imsg.payload_utf8.funcs.decode = &(GoogleHomeNotifier::decode_string);
-    // const char *payload_location = NULL; // Removed unused
-    // decode_string allocates buffer? No, existing implementation used stack
-    // buffer and cast void***. Let's look at decode_string.
+
     char decoded_payload_buf[1024] = {0};
-    imsg.payload_utf8.arg =
-        (void *)decoded_payload_buf; // We need to modify decode to fill this
+    imsg.payload_utf8.arg = (void *)decoded_payload_buf; // Capture this one
 
     if (!pb_decode(&istream, extensions_api_cast_channel_CastMessage_fields,
                    &imsg)) {
@@ -424,12 +412,13 @@ bool GoogleHomeNotifier::decode_string(pb_istream_t *stream,
     return true;
   }
 
-  if (stream->bytes_left > 1023)
+  size_t len = stream->bytes_left;
+  if (len > 1023)
     return false;
 
-  if (!pb_read(stream, (uint8_t *)dest, stream->bytes_left))
+  if (!pb_read(stream, (uint8_t *)dest, len))
     return false;
-  dest[stream->bytes_left] = 0; // Null terminate
+  dest[len] = 0; // Null terminate
 
   return true;
 }
@@ -438,7 +427,9 @@ const char *GoogleHomeNotifier::getLastError() { return m_lastError; }
 
 void GoogleHomeNotifier::setLastError(const char *lastError) {
   snprintf(m_lastError, sizeof(m_lastError), "%s", lastError);
-  ESP_LOGE(TAG, "%s", lastError);
+  if (lastError != NULL && strlen(lastError) > 0) {
+    ESP_LOGE(TAG, "%s", lastError);
+  }
 }
 
 IPAddress GoogleHomeNotifier::getIPAddress() { return m_ipaddress; }

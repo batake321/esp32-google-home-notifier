@@ -18,7 +18,7 @@
 #include "google-tts.h"
 
 #define GHN_LIB_NAME "GoogleHomeNotifier for ESP32-IDF"
-#define GHN_LIB_VERSION "0.0.1"
+#define GHN_LIB_VERSION "0.1"
 
 #define APP_ID "CC1AD845"
 

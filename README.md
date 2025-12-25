@@ -19,6 +19,18 @@ This is a fork of [esp8266-google-home-notifier](https://github.com/horihiro/esp
 ## Requirement
 - **ESP32** (ESP-IDF 5.x or Arduino Core 3.x)
 - This library depends on Google Translate Service for TTS.
+- **Config for ESP-IDF (Critical)**:
+  - **Connection Timeout**: Google Home handshake can be slow. Ensure 30s timeout is allowed (default config now attempts 30s).
+  - **Stack Size**: The pure ESP-IDF environment using mbedTLS requires a significant stack size.
+    - If running in a separate Task, ensure at least **16384 bytes (16KB)** stack. 32KB is recommended for stability.
+    - **Do NOT run in the main loop / user entrypoint** unless you configure the main task stack size to be >16KB in `sdkconfig`.
+  - **Kconfig (sdkconfig)**:
+    - `CONFIG_MBEDTLS_DYNAMIC_BUFFER=y` : **REQUIRED** to prevent stack overflow.
+    - `CONFIG_MBEDTLS_EXTERNAL_MEM_ALLOC` : **DISABLE** unless you have PSRAM.
+    - `CONFIG_ESP_TLS_INSECURE=y` & `CONFIG_ESP_TLS_SKIP_SERVER_CERT_VERIFY=y` : Required for Google Home self-signed certs.
+  - **Rebuild Requirements**:
+    - When changing these `sdkconfig` / `menuconfig` settings, **Delete the `sdkconfig` file** in your project root and perform a **Full Clean** (e.g., `idf.py fullclean` or `ESP-IDF: Full Clean Project` in VSCode) to ensure settings are correctly propagated to the build system.
+
 
 ## Installation
 1. Download the ZIP file from [Code] -> [Download ZIP] on GitHub.
